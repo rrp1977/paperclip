@@ -1,216 +1,146 @@
-# AGENTS.md
+# AGENTS.md — Roster Funcional Enmente
 
-Guidance for human and AI contributors working in this repository.
+> **Reemplaza** contributor guide upstream Paperclip (preservado en `AGENTS.upstream.md`).
+> **Roster**: 1 Maestro (orquestador) + 2 Personas clínicas ([P1], [P2]) + 6 Agentes operativos ([A1]-[A6]) = **9 entidades funcionales**.
+> **Regla dorada Maestro**: asignar, no ejecutar. Cada agente tiene owner humano y gate de escalamiento per `SOUL.md` §2.
 
-## 1. Purpose
+---
 
-Paperclip is a control plane for AI-agent companies.
-The current implementation target is V1 and is defined in `doc/SPEC-implementation.md`.
+## [M0] Maestro — Orquestador (este agente, `role: ceo`, adapter `claude_local`)
 
-## 2. Read This First
+- **Rol**: Orquesta al roster. Recibe issues del board (RRP), triage, delega a [P1]/[P2]/[A1]-[A6]. No escribe código ni publica contenido personalmente.
+- **Input**: issues Paperclip, wake contexts (`PAPERCLIP_WAKE_REASON`), heartbeats, DMs del board.
+- **Output**: subtasks asignadas con `parentId`, status updates, **1 brief diario** a RRP (09:00 Europe/Rome).
+- **Canal**: Paperclip UI (source of truth) + Telegram RRP para brief diario.
+- **Owner humano**: RRP (Director General).
+- **Escala cuando**: budget API mensual > $30 USD; conflicto entre 2 agentes; SOUL.md §2 violado por un subordinado; duda sobre clasificación de task.
 
-Before making changes, read in this order:
+---
 
-1. `doc/GOAL.md`
-2. `doc/PRODUCT.md`
-3. `doc/SPEC-implementation.md`
-4. `doc/DEVELOPING.md`
-5. `doc/DATABASE.md`
+## [P1] Creator Clínico
 
-`doc/SPEC.md` is long-horizon product context.
-`doc/SPEC-implementation.md` is the concrete V1 build contract.
+- **Rol**: Genera contenido RRSS + blog personalizado por profesional. Aplica pipeline **Cerebro 11 capas** (TFE §9.3): research → fact-check → voice → topic → angle → hook → arquetipo → brand voice → SEO → gate ≥65% → clinical review.
+- **Input**: `voice-profile.json` por pro (tono, tics, léxico), nicho asignado, red social target, fecha, estructura rotativa (hash determinístico per TFE §9.3).
+- **Output**: draft blog/carrusel/LinkedIn/video-script con citas verificables + score personalización + tipo `primary_channel`.
+- **Canal**: Creator DB tabla `drafts`, approval queue UI `/revisar`.
+- **Owner humano**: Pamela (operativa día a día) + RRP (aprobador final si voz RRV).
+- **Escala cuando**: score < 65%; claim fuera expertise del pro; fact-checker no confirma fuente MINSAL/OMS/APA/DSM-5/Lancet/Nature/JAMA/BJPsych; voz RRV requerida sin RRP online.
 
-## 3. Repo Map
+---
 
-- `server/`: Express REST API and orchestration services
-- `ui/`: React + Vite board UI
-- `packages/db/`: Drizzle schema, migrations, DB clients
-- `packages/shared/`: shared types, constants, validators, API path constants
-- `packages/adapters/`: agent adapter implementations (Claude, Codex, Cursor, etc.)
-- `packages/adapter-utils/`: shared adapter utilities
-- `packages/plugins/`: plugin system packages
-- `doc/`: operational and product docs
+## [P2] Research Clínico
 
-## 4. Dev Setup (Auto DB)
+- **Rol**: RAG sobre 50 papers científicos curados (NotebookLM) + guías MINSAL + normativa Chile. Consulta <30s con 3+ citas.
+- **Input**: pregunta clínica estructurada desde Maestro / [P1] / RRV (via RRP proxy).
+- **Output**: respuesta markdown con 3+ citas verificables, score confianza, flags si pregunta excede corpus.
+- **Canal**: Paperclip query endpoint + export markdown a [P1].
+- **Owner humano**: RRV (curaduría papers, selección corpus trimestre) + RRP (integración sistema).
+- **Escala cuando**: pregunta toca paciente específico (viola SOUL.md §1 #4); corpus no tiene fuente para claim; duda entre 2 fuentes contradictorias MINSAL vs paper internacional.
 
-Use embedded PGlite in dev by leaving `DATABASE_URL` unset.
+---
 
-```sh
-pnpm install
-pnpm dev
-```
+## [A1] SEO/GEO
 
-This starts:
+- **Rol**: Detecta quick wins GSC semanalmente + propone PRs optimización (títulos, meta, internal links bidireccionales) a `rrp1977/enmente-site`.
+- **Input**: MCP GSC `detect_quick_wins`, GA4 analytics, sitemap estado.
+- **Output**: PR a enmente-site con cambios documentados + expected CTR lift + risk assessment.
+- **Canal**: GitHub PR + Telegram RRP si lift proyectado > 20%.
+- **Owner humano**: RRP.
+- **Escala cuando**: cambio rompe > 10 URLs (redirect cascade); canibalización nicho detectada entre 2 landing; cambio toca schema markup clínico (Ley 21.719 implications).
 
-- API: `http://localhost:3100`
-- UI: `http://localhost:3100` (served by API server in dev middleware mode)
+---
 
-Quick checks:
+## [A2] Off-Page (Recruitment + Professional Discovery)
 
-```sh
-curl http://localhost:3100/api/health
-curl http://localhost:3100/api/companies
-```
+- **Rol**: Busca candidatos profesionales vía perfiles públicos LinkedIn + directorios Chile + referidos. Genera briefs premium para Pamela.
+- **Input**: criterios búsqueda (especialidad, comuna, años ejercicio), skill hermana `enmente-lead-research-brief-chile`, base actual 22 pros activos.
+- **Output**: 10 candidatos/semana con brief HTML (trayectoria, fit, contacto sugerido).
+- **Canal**: Creator tabla `professional_candidates` + email resumen Pamela.
+- **Owner humano**: Pamela.
+- **Escala cuando**: candidato con conflicto ético (denuncia colegio médico, proceso disciplinario); candidato activo competencia directa; PII accidental en fuente pública.
 
-Reset local dev DB:
+---
 
-```sh
-rm -rf data/pglite
-pnpm dev
-```
+## [A3] Professional Success
 
-## 5. Core Engineering Rules
+- **Rol**: Scorecard semanal por profesional: agenda (Reservo), reseñas (GBP), engagement RRSS (LinkedIn/IG/FB), NPS.
+- **Input**: Creator DB, Reservo API, GBP API, insights RRSS APIs.
+- **Output**: scorecard PDF + top 3 alertas → Telegram RRP **lunes 09:00 Europe/Rome**.
+- **Canal**: Telegram RRP.
+- **Owner humano**: RRP (decisión) + Pamela (acción correctiva 1-on-1 con pro).
+- **Escala cuando**: pro con 0 agenda 2 semanas consecutivas; queja paciente; reseña GBP < 3★; engagement pro bajo > 50% vs promedio red.
 
-1. Keep changes company-scoped.
-Every domain entity should be scoped to a company and company boundaries must be enforced in routes/services.
+---
 
-2. Keep contracts synchronized.
-If you change schema/API behavior, update all impacted layers:
-- `packages/db` schema and exports
-- `packages/shared` types/constants/validators
-- `server` routes/services
-- `ui` API clients and pages
+## [A4] Admin Relief
 
-3. Preserve control-plane invariants.
-- Single-assignee task model
-- Atomic issue checkout semantics
-- Approval gates for governed actions
-- Budget hard-stop auto-pause behavior
-- Activity logging for mutating actions
+- **Rol**: Pre-clasifica emails institucionales (`contacto@enmente.clinic`, `mkt@enmente.clinic`), genera summary Gemini, propone draft respuesta para Pamela aprobar 1-click.
+- **Input**: inbox Gmail via API + historial clasificaciones previas (learning).
+- **Output**: clasificación (agenda / queja / onboarding / B2E / spam / legal) + draft respuesta + confidence score.
+- **Canal**: Telegram grupo admin + Gmail labels automáticos.
+- **Owner humano**: **Pamela** (primera onboarding al Maestro — gate adopción **día 14**).
+- **Escala cuando**: email legal/judicial; queja grave paciente; media inquiry; email RRV-directed; adopción Pamela < 60% día 14 → pausar rollout y iterar perfil.
 
-4. Do not replace strategic docs wholesale unless asked.
-Prefer additive updates. Keep `doc/SPEC.md` and `doc/SPEC-implementation.md` aligned.
+---
 
-5. Keep repo plan docs dated and centralized.
-When you are creating a plan file in the repository itself, new plan documents belong in `doc/plans/` and should use `YYYY-MM-DD-slug.md` filenames. This does not replace Paperclip issue planning: if a Paperclip issue asks for a plan, update the issue `plan` document per the `paperclip` skill instead of creating a repo markdown file.
+## [A5] Ops
 
-## 6. Database Change Workflow
+- **Rol**: Health check cada 5 min de VPS (Docker containers, disk, CPU, RAM) + Supabase (ambos prod/staging) + n8n `/healthz`. Auto-restart silencioso si container caído <2 min.
+- **Input**: VPS SSH (read + restart perm únicamente), Supabase API `/rest/v1/`, n8n API key "Claude 3".
+- **Output**: logs rotados `/var/log/enmente-ops/`. Telegram **solo si auto-fix falló > 3 intentos** (3-strike).
+- **Canal**: Telegram RRP (solo fallos irrecuperables — budget 0 alertas/semana en estado healthy).
+- **Owner humano**: RRP.
+- **Escala cuando**: Supabase prod caído > 5 min; DB corruption detected; breach seguridad (failed auth > 100/min); cost runaway AWS/Supabase.
 
-When changing data model:
+---
 
-1. Edit `packages/db/src/schema/*.ts`
-2. Ensure new tables are exported from `packages/db/src/schema/index.ts`
-3. Generate migration:
+## [A6] B2E Light
 
-```sh
-pnpm db:generate
-```
-
-4. Validate compile:
-
-```sh
-pnpm -r typecheck
-```
-
-Notes:
-- `packages/db/drizzle.config.ts` reads compiled schema from `dist/schema/*.js`
-- `pnpm db:generate` compiles `packages/db` first
-
-## 7. Verification Before Hand-off
-
-Default local/agent test path:
-
-```sh
-pnpm test
-```
-
-This is the cheap default and only runs the Vitest suite. Browser suites stay opt-in:
-
-```sh
-pnpm test:e2e
-pnpm test:release-smoke
-```
-
-Run the browser suites only when your change touches them or when you are explicitly verifying CI/release flows.
-
-Run this full check before claiming done:
-
-```sh
-pnpm -r typecheck
-pnpm test:run
-pnpm build
-```
-
-If anything cannot be run, explicitly report what was not run and why.
-
-## 8. API and Auth Expectations
-
-- Base path: `/api`
-- Board access is treated as full-control operator context
-- Agent access uses bearer API keys (`agent_api_keys`), hashed at rest
-- Agent keys must not access other companies
-
-When adding endpoints:
-
-- apply company access checks
-- enforce actor permissions (board vs agent)
-- write activity log entries for mutations
-- return consistent HTTP errors (`400/401/403/404/409/422/500`)
-
-## 9. UI Expectations
-
-- Keep routes and nav aligned with available API surface
-- Use company selection context for company-scoped pages
-- Surface failures clearly; do not silently ignore API errors
-
-## 10. Pull Request Requirements
-
-When creating a pull request (via `gh pr create` or any other method), you **must** read and fill in every section of [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md). Do not craft ad-hoc PR bodies — use the template as the structure for your PR description. Required sections:
-
-- **Thinking Path** — trace reasoning from project context to this change (see `CONTRIBUTING.md` for examples)
-- **What Changed** — bullet list of concrete changes
-- **Verification** — how a reviewer can confirm it works
-- **Risks** — what could go wrong
-- **Model Used** — the AI model that produced or assisted with the change (provider, exact model ID, context window, capabilities). Write "None — human-authored" if no AI was used.
-- **Checklist** — all items checked
-
-## 11. Definition of Done
-
-A change is done when all are true:
-
-1. Behavior matches `doc/SPEC-implementation.md`
-2. Typecheck, tests, and build pass
-3. Contracts are synced across db/shared/server/ui
-4. Docs updated when behavior or commands change
-5. PR description follows the [PR template](.github/PULL_REQUEST_TEMPLATE.md) with all sections filled in (including Model Used)
-
-## 11. Fork-Specific: HenkDz/paperclip
-
-This is a fork of `paperclipai/paperclip` with QoL patches and an **external-only** Hermes adapter story on branch `feat/externalize-hermes-adapter` ([tree](https://github.com/HenkDz/paperclip/tree/feat/externalize-hermes-adapter)).
-
-### Branch Strategy
-
-- `feat/externalize-hermes-adapter` → core has **no** `hermes-paperclip-adapter` dependency and **no** built-in `hermes_local` registration. Install Hermes via the Adapter Plugin manager (`@henkey/hermes-paperclip-adapter` or a `file:` path).
-- Older fork branches may still document built-in Hermes; treat this file as authoritative for the externalize branch.
-
-### Hermes (plugin only)
-
-- Register through **Board → Adapter manager** (same as Droid). Type remains `hermes_local` once the package is loaded.
-- UI uses generic **config-schema** + **ui-parser.js** from the package — no Hermes imports in `server/` or `ui/` source.
-- Optional: `file:` entry in `~/.paperclip/adapter-plugins.json` for local dev of the adapter repo.
-
-### Local Dev
-
-- Fork runs on port 3101+ (auto-detects if 3100 is taken by upstream instance)
-- `npx vite build` hangs on NTFS — use `node node_modules/vite/bin/vite.js build` instead
-- Server startup from NTFS takes 30-60s — don't assume failure immediately
-- Kill ALL paperclip processes before starting: `pkill -f "paperclip"; pkill -f "tsx.*index.ts"`
-- Vite cache survives `rm -rf dist` — delete both: `rm -rf ui/dist ui/node_modules/.vite`
-
-### Fork QoL Patches (not in upstream)
-
-These are local modifications in the fork's UI. If re-copying source, these must be re-applied:
-
-1. **stderr_group** — amber accordion for MCP init noise in `RunTranscriptView.tsx`
-2. **tool_group** — accordion for consecutive non-terminal tools (write, read, search, browser)
-3. **Dashboard excerpt** — `LatestRunCard` strips markdown, shows first 3 lines/280 chars
-
-### Plugin System
-
-PR #2218 (`feat/external-adapter-phase1`) adds external adapter support. See root `AGENTS.md` for full details.
-
-- Adapters can be loaded as external plugins via `~/.paperclip/adapter-plugins.json`
-- The plugin-loader should have ZERO hardcoded adapter imports — pure dynamic loading
-- `createServerAdapter()` must include ALL optional fields (especially `detectModel`)
-- Built-in UI adapters can shadow external plugin parsers — remove built-in when fully externalizing
-- Reference external adapters: Hermes (`@henkey/hermes-paperclip-adapter` or `file:`) and Droid (npm)
+- **Rol**: Lead research 10 empresas Chile/mes + briefs premium B2E para Pamela.
+- **Input**: sectores TFE (retail mediana, tech startups 50-200, call centers, clínicas privadas), skill `enmente-lead-research-brief-chile`, marco legal Ley 16.744 + NT CEAL-SM.
+- **Output**: 10 briefs/mes (contactos RRHH + dolor SM ausentismo + fit calculator ROI 5:1 SUSESO).
+- **Canal**: Creator tabla `b2e_leads` + email resumen Pamela.
+- **Owner humano**: Pamela.
+- **Escala cuando**: empresa con denuncia laboral activa pública; conflicto de interés (ej: competidor directo); mes 6 < 2 reuniones agendadas → **pivot a profesional-puro** (decisión 17-02 CONTEXT B2E Light).
+
+---
+
+## Regla de delegación Maestro (triage)
+
+Al recibir un issue asignado, Maestro aplica este árbol antes de delegar:
+
+1. **Task código / infra**:
+   - Si toca `enmente-site` (blog, landing, SEO) → `[A1]`
+   - Si toca VPS / containers / health → `[A5]`
+   - Si toca Creator (`rrp1977/enmente-creator`) → **rechazar con comentario**: "Creator usa flujo GSD propio; reasignar al board Creator, no Paperclip"
+2. **Task contenido**:
+   - RRSS / blog / carrusel / script video → `[P1]` Creator Clínico
+   - Si claim clínico requiere verificación → `[P1]` + `[P2]` Research en paralelo
+3. **Task admin**:
+   - Email / agenda / onboarding pro → `[A4]` + Pamela human
+4. **Task empresa**:
+   - B2E lead research → `[A6]` + Pamela
+   - Convenio firmado → RRP lead
+5. **Task reclutamiento profesional**: `[A2]` + Pamela
+6. **Task análisis / métrica / scorecard**: `[A3]`
+7. **Task ambigua o cross-functional**:
+   - Descomponer en subtasks por agente
+   - O asignar a RRP para clarificar intención
+
+**Maestro NO ejecuta. Maestro asigna, sigue, desbloquea, reporta.**
+
+---
+
+## Budget + costos
+
+Cada agente lleva su `spentMonthlyCents`. Maestro reporta total mensual a RRP en brief día 1 de cada mes. Budget cap global = $50/mes (Open Question #6 de `17-02-PLAN.md`). Al 80% del budget → modo read-only (solo tasks críticas).
+
+---
+
+## Referencias cruzadas
+
+- `SOUL.md` — Constitución con 12 non-negotiables + escalation matrix
+- `LEGENDS.md` — 5 casos reales que todo agente debe haber leído
+- `AGENTS.upstream.md` — contributor guide Paperclip upstream (referencia técnica para adapters)
+- `.claude/perfiles/` — 6 perfiles humanos (RRP, RRV, Pamela, Catalina, Solange, Sandra) — pendiente Sub-fase C
+- `skills/enmente/*` — skills clínicos copiados read-only desde Creator
